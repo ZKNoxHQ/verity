@@ -965,3 +965,5 @@ seeds storage only: it does not fabricate creator nonce, balance or code, model
 external account effects, admit CREATE2, or establish full deployment A/B/C
 equivalence. Those account inputs, complete gas/memory integration and the
 remaining source-admission obligations still have to be implemented.
+
+Stateful differential implementation snapshots bind the recorded Git HEAD to the campaign workspace and recheck it during replay. A commit switch with byte-identical sources still invalidates the campaign; an unavailable Git revision is an instrumentation error. This supplements source/artifact identity checks and does not certify unexecuted test phases.
