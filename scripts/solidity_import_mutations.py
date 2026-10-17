@@ -674,6 +674,17 @@ def create2_opcode_mutations() -> None:
     print("pass four CREATE2 opcode runtime mutations (A/B foundation; compiled route pending)", flush=True)
 
 
+def account_storage_mutations() -> None:
+    results = json.loads((module_campaign_output("check_account_storage_mutations", "account-storage-conformance",
+                                                 MUTANT_TIMEOUT) / "mutation-results.json").read_text())
+    names = {"denote-physical-slot-account", "denote-physical-batch-account", "denote-physical-modify-account"}
+    if ({row['mutant'] for row in results} != names
+            or not all(row['detected'] and row['baselinePassed'] and row['implementationCompiles']
+                       and row['kind'] == 'kernel-conformance-rejection' for row in results)):
+        raise SystemExit("account storage mutations require valid implementations rejected by unchanged kernel assertions")
+    print("pass three account storage kernel conformance mutations (not runtime witnesses)", flush=True)
+
+
 def block_mutation() -> None:
     block_result = module_campaign("check_block_mutations", "block-mutations", MUTANT_TIMEOUT)
     if (block_result["mutant"] != "import-block-drop" or not block_result["detected"]
@@ -725,7 +736,8 @@ def tasks(update_golden: bool) -> list:
              ("reference-wrong-root", 1, reference_mutation),
              ("reference-location", 1, reference_location_mutation),
              ("deployment-world", 1, deployment_world_mutations),
-             ("create2-opcode", 1, create2_opcode_mutations)]
+             ("create2-opcode", 1, create2_opcode_mutations),
+             ("account-storage", 1, account_storage_mutations)]
     items += [(m, 1, (lambda m=m: hashing_mutant(m))) for m in HASHING_MUTANTS]
     items += [(m, 1, (lambda m=m: differential_mutant(m))) for m in DIFFERENTIAL_MUTANTS]
     items += [(m, 1, (lambda m=m: guard_mutant(m))) for m in GUARD_MUTANTS]
