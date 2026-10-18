@@ -42,6 +42,9 @@ def stateful_campaign(output, transactions, seed, jobs=1):
         ('mutations', ['-m', 'solidity_differential.check_stateful_mutations']),
         ('event-mutations', ['-m', 'solidity_differential.check_event_mutations']),
     ]
+    checks.append(('pinned-sequence', ['-m', 'solidity_differential.check_pinned_sequence_fixture',
+        '--transactions', str(max(64, transactions)), '--seed', str(seed),
+        '--output', str(output / 'pinned-sequence')]))
     checks.append(('create2-parent-opcode', ['-m', 'solidity_differential.check_deployment_world',
         '--parent-opcode', '--output', str(output / 'create2-parent-opcode')]))
     checks.append(('hashing-programs', ['-m', 'solidity_differential.check_hashing_programs',
@@ -98,10 +101,10 @@ def stateful_campaign(output, transactions, seed, jobs=1):
         '--output', str(output / 'scalar-array-abi')]))
     checks.append(('scalar-array-abi-rejections', ['-m', 'solidity_differential.check_scalar_array_abi_rejections',
         '--output', str(output / 'scalar-array-abi-rejections')]))
-    checks.append(('market-abi', ['-m', 'solidity_differential.check_market_abi_programs',
-        '--output', str(output / 'market-abi')]))
-    checks.append(('market-abi-rejections', ['-m', 'solidity_differential.check_market_abi_rejections',
-        '--output', str(output / 'market-abi-rejections')]))
+    checks.append(('nested-dynamic-struct-abi', ['-m', 'solidity_differential.check_nested_dynamic_struct_abi_programs',
+        '--output', str(output / 'nested-dynamic-struct-abi')]))
+    checks.append(('nested-dynamic-struct-abi-rejections', ['-m', 'solidity_differential.check_nested_dynamic_struct_abi_rejections',
+        '--output', str(output / 'nested-dynamic-struct-abi-rejections')]))
     checks.append(('block-rejections', ['-m', 'solidity_differential.check_block_rejections',
         '--output', str(output / 'block-rejections')]))
     checks.append(('abi-event-composition', ['-m', 'solidity_differential.check_abi_event_composition',
