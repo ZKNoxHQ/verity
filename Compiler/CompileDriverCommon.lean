@@ -452,6 +452,12 @@ private def ensureNoUnsafeBlocks (specs : List CompilationModel) : IO Unit := do
     throw (IO.userError
       s!"Unsafe blocks remain:\n{String.intercalate "\n" unsafeSites}")
 
+private def ensureStrictBoundary (specs : List CompilationModel) : IO Unit := do
+  let outsideSites := emitOutsideBoundaryHelperUsageSiteLines specs
+  if !outsideSites.isEmpty then
+    throw (IO.userError
+      s!"Entrypoints transitively call internal helpers outside the proved Layer 3 boundary:\n{String.intercalate "\n" outsideSites}")
+
 private def ensureLayoutCompatible (specs : List CompilationModel) : IO Unit := do
   let (baseline, candidate) ← requireLayoutCompatibilityPair specs
   let incompatibilities := emitIncompatibleLayoutChangeLines baseline candidate
@@ -526,7 +532,8 @@ def compileSpecsWithOptions
     (layoutCompatibilityReportPath : Option String := none)
     (denyLayoutIncompatibility : Bool := false)
     (denyUnsafe : Bool := false)
-    (maxStackLocals : Nat := Compiler.Yul.TempReuse.defaultMaxStackLocals) : IO Unit := do
+    (maxStackLocals : Nat := Compiler.Yul.TempReuse.defaultMaxStackLocals)
+    (strictBoundary : Bool := false) : IO Unit := do
   IO.FS.createDirAll outDir
   match abiOutDir with
   | some dir => IO.FS.createDirAll dir
@@ -613,6 +620,8 @@ def compileSpecsWithOptions
     ensureNoUncheckedDependencies specs
   if denyUnsafe then
     ensureNoUnsafeBlocks specs
+  if strictBoundary then
+    ensureStrictBoundary specs
   if verbose then
     IO.println ""
     IO.println "Linear memory mechanics report:"
@@ -706,6 +715,35 @@ def compileSpecsWithOptions
     if !anyUnsafeBlocks then
       IO.println "  (no unsafe blocks used)"
     IO.println "  Trust boundary: each `unsafe \"reason\" do` block suppresses restricted-operation gating for its body. Use `--deny-unsafe` to reject all unsafe blocks."
+    IO.println ""
+    IO.println "Static opt-out report:"
+    let mut anyStaticOptOuts := false
+    for spec in specs do
+      let optOuts := collectStaticOptOuts spec
+      if !optOuts.isEmpty then
+        anyStaticOptOuts := true
+        IO.println s!"  {spec.name}:"
+        for entry in optOuts do
+          IO.println s!"    [{entry.optOut}] {entry.function}: {entry.suppressedStatement}"
+    if !anyStaticOptOuts then
+      IO.println "  (no static analysis opt-outs used)"
+    IO.println "  Trust boundary: static opt-outs suppress compile-time CEI or reentrancy checks; audit the suppressed statements manually."
+    IO.println ""
+    IO.println "Internal helper boundary report:"
+    let mut anyHelpers := false
+    for spec in specs do
+      let helpers := collectHelperBoundaryClassifications spec
+      if !helpers.isEmpty then
+        anyHelpers := true
+        IO.println s!"  {spec.name}:"
+        for helper in helpers do
+          let detail :=
+            if helper.reasons.isEmpty then ""
+            else s!" ({String.intercalate ", " helper.reasons})"
+          IO.println s!"    [{helper.status}] {helper.name}{detail}"
+    if !anyHelpers then
+      IO.println "  (no internal helpers declared)"
+    IO.println "  Proof boundary: helpers outside the Layer 3 boundary use return/stop/nested-call/unsafe/matchAdt shapes. Use `--strict-boundary` to reject entrypoints reaching outside helpers."
     IO.println ""
     IO.println "Proof-status summary:"
     let mut anyForeignStatus := false
@@ -847,7 +885,8 @@ unsafe def compileModulesWithOptions
     (layoutCompatibilityReportPath : Option String := none)
     (denyLayoutIncompatibility : Bool := false)
     (denyUnsafe : Bool := false)
-    (maxStackLocals : Nat := Compiler.Yul.TempReuse.defaultMaxStackLocals) : IO Unit := do
+    (maxStackLocals : Nat := Compiler.Yul.TempReuse.defaultMaxStackLocals)
+    (strictBoundary : Bool := false) : IO Unit := do
   let specs ←
     match ← Compiler.ModuleInput.loadSpecsFromRawModules modules with
     | .ok specs => pure specs
@@ -856,6 +895,6 @@ unsafe def compileModulesWithOptions
     backend specs outDir verbose libraryPaths options patchReportPath trustReportPath assumptionReportPath abiOutDir
     denyUncheckedDependencies denyAssumedDependencies denyAxiomatizedPrimitives denyLocalObligations denyLinearMemoryMechanics
     denyEventEmission denyLowLevelMechanics denyRuntimeIntrospection denyProxyUpgradeability layoutReportPath
-    layoutCompatibilityReportPath denyLayoutIncompatibility denyUnsafe maxStackLocals
+    layoutCompatibilityReportPath denyLayoutIncompatibility denyUnsafe maxStackLocals strictBoundary
 
 end Compiler.CompileDriverCommon
