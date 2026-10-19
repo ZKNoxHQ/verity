@@ -6,6 +6,7 @@ import Contracts.Smoke.Arithmetic
 import Contracts.Smoke.Declarations
 import Contracts.Smoke.StructsAndArrays
 import Contracts.Smoke.HelperCalls
+import Contracts.Smoke.VoidHelperSequence
 import Contracts.Smoke.StructMappings
 import Contracts.Smoke.ExternalCalls
 import Contracts.Smoke.ExternalCallObservability

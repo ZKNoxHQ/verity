@@ -361,7 +361,12 @@ def compileStmtWithFork (fields : List Field) (events : List EventDef := [])
           YulStmt.exprStmt (YulExpr.call "mstore" [YulExpr.lit 0, valueExpr]),
           YulStmt.exprStmt (YulExpr.call "return" [YulExpr.lit 0, YulExpr.lit 32])
         ]
-  | Stmt.stop => return [YulStmt.exprStmt (YulExpr.call "stop" [])]
+  | Stmt.stop =>
+      -- Inside an internal helper, `Stmt.stop` ends the helper's frame (the source semantics
+      -- `interpretInternalFunctionFuel` treats `.stop` as a successful return to the caller):
+      -- lower it to `leave`, not to the EVM `stop()` that would halt the whole transaction.
+      if isInternal then pure [YulStmt.leave]
+      else pure [YulStmt.exprStmt (YulExpr.call "stop" [])]
 
   | Stmt.ite cond thenBranch elseBranch => do
       -- If/else: compile to Yul if + negated if (#179)
