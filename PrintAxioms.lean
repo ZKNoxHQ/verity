@@ -1271,6 +1271,20 @@ end Verity.AxiomAudit
   Contracts.ReentrancyRelyGuarantee.RegistryDispatchCalldata.receive_entrypoint_requires_empty
   Contracts.ReentrancyRelyGuarantee.RegistryLiveCalldata.setFromCalldata_registered_live
   Contracts.ReentrancyRelyGuarantee.generated_registry_callback_preserves
+  Contracts.ReentrancyRelyGuarantee.Vault.vaultInv_frame_calls_returndata
+  Contracts.ReentrancyRelyGuarantee.Vault.vaultInv_setLock
+  Contracts.ReentrancyRelyGuarantee.Vault.deposit_entrypoint_preserves_locked
+  Contracts.ReentrancyRelyGuarantee.Vault.withdraw_entrypoint_preserves_locked
+  Contracts.ReentrancyRelyGuarantee.Vault.peekTracked_entrypoint_preserves_locked
+  Contracts.ReentrancyRelyGuarantee.Vault.registry_preserves_locked
+  -- Contracts.ReentrancyRelyGuarantee.Vault.locked_after_tracked_sub  -- private
+  -- Contracts.ReentrancyRelyGuarantee.Vault.locked_after_tracked_sub_and_debit  -- private
+  -- Contracts.ReentrancyRelyGuarantee.Vault.ecmDoWords_raw_of_run_success  -- private
+  -- Contracts.ReentrancyRelyGuarantee.Vault.ecmDoWords_raw_of_run_revert  -- private
+  -- Contracts.ReentrancyRelyGuarantee.Vault.locked_after_withdraw_ecm  -- private
+  Contracts.ReentrancyRelyGuarantee.Vault.keeps_withdraw
+  Contracts.ReentrancyRelyGuarantee.Vault.callbackBounded_assumption_fields
+  Contracts.ReentrancyRelyGuarantee.Vault.evmHyp_assumption_fields
 
   -- Verity/Proofs/Stdlib/Automation.lean
   Verity.Proofs.Stdlib.Automation.isSuccess_success
@@ -1817,6 +1831,11 @@ end Verity.AxiomAudit
   Compiler.Proofs.AbiEncoding.bindExternalParams_string_of_abiEncodeArgs
   Compiler.Proofs.AbiEncoding.bindExternalParam_scalarArray_of_abiEncodeArgs
   Compiler.Proofs.AbiEncoding.bindExternalParams_scalarArray_of_abiEncodeArgs
+  Compiler.Proofs.AbiEncoding.compileUnindexedAbiEncode_scalar_exec
+  Compiler.Proofs.AbiEncoding.compileIndexedInPlaceEncoding_scalar_exec
+  Compiler.Proofs.AbiEncoding.compileUnindexedAbiEncode_tuple_nil
+  Compiler.Proofs.AbiEncoding.compileIndexedInPlaceEncoding_tuple_nil
+  Compiler.Proofs.AbiEncoding.compileIndexedInPlaceEncoding_fixedArray_zero
 
   -- Compiler/Proofs/AbiEventObservable.lean
   -- Compiler.Proofs.AbiEventObservable.land_mod_evm_right  -- private
@@ -9521,4 +9540,4 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.TempReuseSoundness.spillLetStep_eval_eq
 ]
 
--- Total: 8782 theorems/lemmas (5753 public, 3029 private, 0 sorry'd)
+-- Total: 8801 theorems/lemmas (5767 public, 3034 private, 0 sorry'd)
