@@ -27,6 +27,7 @@ import Verity.Core
 import Verity.Specs.Common
 import Verity.Stdlib.Math
 import Verity.EVM.Uint256
+import Verity.Proofs.Stdlib.UnfoldSet
 
 namespace Verity.Proofs.Stdlib.Automation
 
@@ -70,13 +71,29 @@ def verity_simp_set : List Lean.Name := [
   ``ContractResult.fst
 ]
 
+attribute [verity_unfold_simps]
+  msgSender msgValue getStorageAddr getStorage setStorage setStorageAddr
+  getMapping setMapping setMapping2 getMappingUint setMappingUint getMapping2
+  ContractState.readSlot ContractState.writeSlot ContractState.readAddrSlot
+  ContractState.writeAddrSlot ContractState.readMap ContractState.writeMap
+  ContractState.readMapUint ContractState.writeMapUint ContractState.readMap2
+  ContractState.writeMap2
+  emitEvent List.mapM List.mapM.loop
+  Verity.require Verity.pure Verity.bind Bind.bind Pure.pure
+  Contract.run ContractResult.snd ContractResult.fst
+
 /-- Unfold a contract function with the standard Verity simp set. -/
 syntax (name := verity_unfold)
   "verity_unfold " simpLemma : tactic
 
-/-- Unfold a contract function with the standard Verity simp set plus extra simp args. -/
+/-- Unfold a contract function with the standard Verity simp set plus extra simp args
+    (typically the internal helpers it calls: `verity_unfold settle with settlePage, unlink`). -/
 syntax (name := verity_unfold_with)
-  "verity_unfold " simpLemma " with " simpLemma : tactic
+  "verity_unfold " simpLemma " with " simpLemma,+ : tactic
+
+/-- Same, at a hypothesis. -/
+syntax (name := verity_unfold_at)
+  "verity_unfold " simpLemma " at " ident : tactic
 
 /-- Frame-proof helper: rewrite by an unfold lemma, then simplify result-state fields. -/
 syntax (name := verity_frame)
@@ -116,28 +133,11 @@ syntax (name := verity_arith)
 
 macro_rules
   | `(tactic| verity_unfold $fn:simpLemma) =>
-      `(tactic| simp only [
-        $fn, msgSender, getStorageAddr, getStorage, setStorage, setStorageAddr,
-        getMapping, setMapping, setMapping2, getMappingUint, setMappingUint, getMapping2,
-        ContractState.readSlot, ContractState.writeSlot, ContractState.readAddrSlot,
-        ContractState.writeAddrSlot, ContractState.readMap, ContractState.writeMap,
-        ContractState.readMapUint, ContractState.writeMapUint, ContractState.readMap2,
-        ContractState.writeMap2,
-        Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
-        Contract.run, ContractResult.snd, ContractResult.fst
-      ])
-  | `(tactic| verity_unfold $fn:simpLemma with $extra:simpLemma) =>
-      `(tactic| simp only [
-        $fn, msgSender, getStorageAddr, getStorage, setStorage, setStorageAddr,
-        getMapping, setMapping, setMapping2, getMappingUint, setMappingUint, getMapping2,
-        ContractState.readSlot, ContractState.writeSlot, ContractState.readAddrSlot,
-        ContractState.writeAddrSlot, ContractState.readMap, ContractState.writeMap,
-        ContractState.readMapUint, ContractState.writeMapUint, ContractState.readMap2,
-        ContractState.writeMap2,
-        Verity.require, Verity.pure, Verity.bind, Bind.bind, Pure.pure,
-        Contract.run, ContractResult.snd, ContractResult.fst,
-        $extra
-      ])
+      `(tactic| simp only [verity_unfold_simps, $fn])
+  | `(tactic| verity_unfold $fn:simpLemma with $extra,*) =>
+      `(tactic| simp only [verity_unfold_simps, $fn, $extra,*])
+  | `(tactic| verity_unfold $fn:simpLemma at $h:ident) =>
+      `(tactic| simp only [verity_unfold_simps, $fn] at $h:ident)
   | `(tactic| verity_frame $h:rwRule) =>
       `(tactic| (rw [$h]; simp [ContractResult.snd,
         ContractState.writeSlot, ContractState.writeAddrSlot,
