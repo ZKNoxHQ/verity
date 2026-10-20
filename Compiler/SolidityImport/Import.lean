@@ -144,6 +144,16 @@ private def optStr (j : Json) (key : String) : Option String :=
   | some v => v.getStr?.toOption
   | none => none
 
+/-- A callee of `delegatecall` function type: a `public` or `external` library
+function called from outside its library, directly (`L.f(...)`) or through
+`using L for T`. solc emits a `DELEGATECALL` to the library address linked at
+deployment, whose code the source does not determine (the body may be a stub
+for bytecode produced by another toolchain), so the call is never inlined. -/
+private def isLibraryDelegateCall (callee : Json) : Bool :=
+  match optStr ((field? callee "typeDescriptions").getD Json.null) "typeIdentifier" with
+  | some tid => tid.startsWith "t_function_delegatecall"
+  | none => false
+
 private def hexDigit (n : Nat) : Char :=
   if n < 10 then Char.ofNat ('0'.toNat + n) else Char.ofNat ('a'.toNat + n - 10)
 
@@ -3699,6 +3709,8 @@ private partial def stmtAlwaysReverts (visited : List Nat) (s : Json) : M Bool :
       unless optStr expr "nodeType" == some "FunctionCall" && optStr expr "kind" == some "functionCall" do
         return false
       let callee := field? expr "expression" |>.getD Json.null
+      -- A DELEGATECALL runs the linked library's code, which this body does not describe.
+      if isLibraryDelegateCall callee then return false
       let calleeKind := optStr callee "nodeType"
       if calleeKind == some "Identifier" && optStr callee "name" == some "revert" then
         return (field? callee "referencedDeclaration").bind (fun v => v.getInt?.toOption) == some (-19)
@@ -8096,6 +8108,8 @@ private partial def resolveCallTargetAndArgs (j : Json) : M (Nat × Array CallAr
   let names ← mArr (← mField j "names")
   unless names.isEmpty do failAt j "named call arguments are outside this slice"
   let callee ← mField j "expression"
+  if isLibraryDelegateCall callee then
+    failAt callee "external library calls are outside this slice"
   let (fnId, receiver?) ← match ← mKind callee with
     | "FunctionCallOptions" =>
         failAt callee "external contract calls are outside this slice"
@@ -9936,15 +9950,9 @@ private partial def inlineFn (fnId : Nat) (args : Array CallArg) (at_ : Json) : 
       return v
     failAt at_ s!"recursive call {fnId}"
   let some fn := (← get).funs.find? fnId | failAt at_ s!"unresolved function {fnId}"
-  -- External library calls cross an ABI/delegatecall boundary. A root
-  -- descriptor may only be shared with helpers in the same call frame.
-  if optStr fn "visibility" == some "external" then
-    for arg in args do
-      match arg with
-      | .memory _ _ | .abiElement _ _ | .scalarArray _ _ | .byteBuffer _ | .stringBuffer _ | .calldataBytes _ _
-      | .storagePath _ _ _ | .flatStruct _ _ _ _ | .storageBytes _ _ | .storageDynamicArray _ _ _ _ _ | .fnPtr _ _ =>
-          failAt at_ "external reference helper calls are unsupported"
-      | .scalar _ => pure ()
+  -- External library calls (DELEGATECALL) are rejected at the call site
+  -- (`isLibraryDelegateCall`), so a root descriptor only reaches helpers in
+  -- the same call frame.
   let saved := ← get
   let savedYul := saved.yulNames
   let savedFile := (← get).currentFile
@@ -12520,6 +12528,8 @@ private partial def lowerEffectCore (statement : Json) : M (Array Stmt) := do
       return ← lowerBuiltinRevert statement
     if (← mKind callee) == "FunctionCallOptions" then
       failAt callee "external contract calls are outside this slice"
+    if isLibraryDelegateCall callee then
+      failAt callee "external library calls are outside this slice"
     if ← isInterfaceExternalCall expression then
       return (← lowerInterfaceStaticCall expression).pre
     if (← mKind callee) == "Identifier" && optStr callee "name" == some "_callOptionalReturn" then
